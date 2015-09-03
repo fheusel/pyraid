@@ -32,6 +32,7 @@ class RaidFS(fuse.Fuse):
         #self.size = self.raid_dev.size()
 
     def fsinit(self):
+
         os.chdir(self.cwd)
         self.raid_dev = pyraid.RaidDevice(
             volumes = self.volumes,
@@ -41,6 +42,7 @@ class RaidFS(fuse.Fuse):
             offset = int(self.options.offset),
             rotation = self.options.rotation,
             algorithm = self.options.algorithm,
+            missing = int(self.options.missing)
         )
 
     def getattr(self, path):
@@ -90,6 +92,7 @@ def main():
     parser.add_option('-m', '--mount-point', dest='mount_point', help='Path to mount raw device', metavar='PATH', default='.')
     parser.add_option('-r', '--rotation', dest='rotation', help='Parity rotation direction for RAID-5 (left or right)', metavar='DIRECTION', default='left')
     parser.add_option('-a', '--algorithm', dest='algorithm', help='RAID-5 algorithm to use (synchronous or asynchronous)', default='synchronous')
+    parser.add_option('-x', '--missing', dest='missing', help='Missing RAID-5 disk', default=0)
     options, args = parser.parse_args() 
 
     import sys

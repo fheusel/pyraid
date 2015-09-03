@@ -1,7 +1,7 @@
 import os
 
 class RaidDevice(object):
-    def __init__(self, volumes, level, stripe_size, disk_size=0, offset=0, rotation='left', algorithm='asynchronous'):
+    def __init__(self, volumes, level, stripe_size, disk_size=0, offset=0, rotation='left', algorithm='asynchronous', missing=0):
         if level not in (0, 5):
             raise Exception('Raid level must be 0 or 5')
         self.level = level
@@ -26,6 +26,9 @@ class RaidDevice(object):
         self.stripe_size = stripe_size
         self.disk_size = disk_size
         self.offset = offset
+        self.missing = missing
+        if self.missing!=0:
+            self.volumes.insert( missing-1, 1)
         self.volume_count = len(self.volumes)
         self.rotation = rotation
         self.algorithm = algorithm
@@ -59,8 +62,22 @@ class RaidDevice(object):
         physical_stripe = self.get_physical_stripe_number(block_number)
         stripe_map = self.get_stripe_map(physical_stripe)
         volume_index = stripe_map.index(block_number)
-        self.volumes[volume_index].seek(physical_stripe * self.stripe_size + self.offset)
+        if self.missing==(volume_index+1):
+            data=None
+            for i in range(self.volume_count):
+                if i!=(self.missing-1):
+                    self.volumes[i].seek(physical_stripe * self.stripe_size + self.offset)
+                    if (data==None):
+                        data= bytearray(self.volumes[i].read(self.stripe_size))
+                    else:
+                        tmp=bytearray(self.volumes[i].read(self.stripe_size))
+                        for x in range(len(tmp)):
+                            data[x] = data[x] ^ tmp[x]
+            return bytes(data)
+        else:
+            self.volumes[volume_index].seek(physical_stripe * self.stripe_size + self.offset)
         return self.volumes[volume_index].read(self.stripe_size)
+
     def get_start_block(self, offset):
         return offset / self.stripe_size
     def get_block_offset(self, offset):
